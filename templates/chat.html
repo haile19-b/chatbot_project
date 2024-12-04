@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - AI Chatbot</title>
+    <link rel="stylesheet" href="/static/css/chat.css">
+    <script defer src="/static/js/chat.js"></script>
+</head>
+<body>
+    <div class="chat-container">
+        <header>
+            <h1>Chat with AI</h1>
+            <button id="new-chat-btn">New Chat</button>
+        </header>
+        <div class="chat-history">
+            <h2>Previous Chats</h2>
+            <ul id="chat-list">
+                {% for chat in chats %}
+                <li data-chat-id="{{ chat['id'] }}">
+                    <span>{{ chat['chat_name'] }}</span>
+                    <div class="chat-options">
+                        <button class="options-button">...</button>
+                        <div class="dropdown">
+                            <button class="delete-chat-btn" data-chat-id="{{ chat['id'] }}">Delete</button>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>        
+        <div class="chat-window">
+            <!-- Chat messages will be dynamically loaded here -->
+        </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Type your message here..." />
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+</body>
+</html>
