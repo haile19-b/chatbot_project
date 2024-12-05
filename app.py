@@ -8,23 +8,28 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 
+dotenv_path = os.path.join(os.getcwd(), '.env')
+if os.path.exists(dotenv_path):
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path)
+
 app = Flask(__name__)
 
 # Configuration
-CLIENT_SECRETS_FILE = os.path.join(os.getcwd(), 'client_secrets.json')
-DATABASE = 'users.db'
+CLIENT_SECRETS_FILE = os.getenv('CLIENT_SECRETS_FILE', 'client_secrets.json')
+DATABASE = os.getenv('DATABASE_PATH', 'users.db')
 
 # Secret keys and API keys
-app.secret_key = "your_flask_secret_key"
-GEMINI_API_KEY = "My_gemini_API_KEY"  # Gemini API key for the AI service
-GOOGLE_CLIENT_ID = "your_google_client_id" 
-GOOGLE_CLIENT_SECRET = "your_google_client_secret"
+app.secret_key = "your-very-secret-key"
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
 # Initialize the Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
-
 
 # Database connection
 def get_db():
@@ -34,18 +39,15 @@ def get_db():
         db.row_factory = sqlite3.Row
     return db
 
-
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 # User login functionality
 @app.route('/login', methods=['GET', 'POST'])
@@ -64,7 +66,6 @@ def login():
         return "Invalid username or password", 401
 
     return render_template('login.html')
-
 
 # User signup functionality
 @app.route('/signup', methods=['GET', 'POST'])
@@ -89,7 +90,6 @@ def signup():
 
     return render_template('signup.html')
 
-
 # Google OAuth2 login functionality
 @app.route('/login/google')
 def google_login():
@@ -101,7 +101,6 @@ def google_login():
     authorization_url, state = flow.authorization_url(prompt='consent')
     session['state'] = state
     return redirect(authorization_url)
-
 
 @app.route('/login/google/callback')
 def google_login_callback():
@@ -138,7 +137,6 @@ def google_login_callback():
 
     return redirect(url_for('chat'))
 
-
 @app.route('/chat', methods=['GET'])
 def chat():
     if 'user_id' not in session:
@@ -149,7 +147,6 @@ def chat():
     chats = db.execute('SELECT id, chat_name FROM chats WHERE user_id = ?', (user_id,)).fetchall()
     chats_list = [dict(chat) for chat in chats]
     return render_template('chat.html', chats=chats_list, username=session.get('user_name'))
-
 
 @app.route('/new_chat', methods=['POST'])
 def new_chat():
@@ -170,7 +167,6 @@ def new_chat():
     except Exception as e:
         return jsonify({"success": False, "error": f"Failed to create chat: {e}"}), 500
 
-
 @app.route('/send_message', methods=['POST'])
 def send_message():
     if 'user_id' not in session:
@@ -187,7 +183,7 @@ def send_message():
         response = model.generate_content(message)
         bot_response = response.text
     except Exception as e:
-        bot_response = f"An error occurred: {e}"
+        bot_response = "An error occurred while generating a response."
 
     db = get_db()
     try:
@@ -200,7 +196,6 @@ def send_message():
         return jsonify({"error": f"Failed to store message: {e}"}), 500
 
     return jsonify({"bot_response": bot_response})
-
 
 @app.route('/get_chat/<int:chat_id>', methods=['GET'])
 def get_chat(chat_id):
@@ -216,7 +211,6 @@ def get_chat(chat_id):
 
     return jsonify({"success": True, "chat_history": chat['chat_history']})
 
-
 @app.route('/delete_chat/<int:chat_id>', methods=['POST'])
 def delete_chat(chat_id):
     if 'user_id' not in session:
@@ -227,9 +221,9 @@ def delete_chat(chat_id):
         db.execute('DELETE FROM chats WHERE id = ?', (chat_id,))
         db.commit()
         return jsonify({"success": True})
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)
